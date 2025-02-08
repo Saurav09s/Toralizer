@@ -1,19 +1,102 @@
 /*Toralizer.c*/
+/*__________________________________________________________________________________________________________________________________________*/
+//Notes:-
+//1. Predicate - A function that returns true or false
+
+
 
 #include <stdio.h>
 
+
+/*
+1. Turn the client into a library(Shared library)
+2. Turn main() into our own connect()
+3. Replace regular connect()
+4. Grab the IP and port from original connect()
+5. Do what we do now
+*/
+
+
 #include "Toralizer.h"
 
-int main(int argc, char *argv[]){
-    char *host;
-    int port;
+Req *request(struct sockaddr_in *sock2){
+    Req *req;
+    
+    req = malloc(reqsize);
+    
+    req->vn = 4;
+    req->cd = 1;
+    req->dstport = sock2->sin_port;
+    req->dstip = sock2->sin_addr.s_addr;
+    strncpy(req->userid, USERNAME, 8);
+    
+    return req;
+}
 
-    if (argc < 3) {
-        fprintf(stderr, "Usage: %s <host> <port>\n",argv[0]);
 
+int connect(int s2, const struct sockaddr *sock2,socklen_t addrlen){
+     
+    int hSocket;
+    
+    struct sockaddr_in sock;
+    
+    Req *req;
+    Res *res;
+    
+    char buff[ressize];
+    
+    int success;
+    
+    char tmp[512];
+    
+     int (*p)(int, const struct sockaddr*,socklen_t);
+ 
+    p = dlsym(RTLD_NEXT,"connect");
+  
+    hSocket = socket(AF_INET, SOCK_STREAM, 0);
+    
+    if(hSocket < 0){
+        perror("Socket");
+        
         return -1;
     }
-
-    host = argv[1];
-    port = atoi(argv[0]);
+    sock.sin_family = AF_INET;
+    sock.sin_port = htons(PROXYPORT);
+    sock.sin_addr.s_addr = inet_addr(PROXY);
+    
+    if(p(hSocket, (struct sockaddr *)&sock, sizeof(sock))){
+        perror("Connect");
+        
+        return -1;
+    }
+    
+    printf("Connected  to proxy\n");
+    req = request((struct sockaddr_in*)sock2);
+    write(hSocket, req, reqsize); 
+    
+    memset(buff, 0, ressize);
+    if(read(hSocket, buff, ressize)<1){
+      perror("read");
+      free(req);
+      
+      close(hSocket);
+      
+      return -1;
+    }
+    
+    res = (Res*)buff;
+    
+    
+    success = (res->cd == 90);
+    if(!success){
+      fprintf(stderr, "Unable to traverse the proxy, error code: %d\n", res->cd);
+      close(hSocket);
+      free(req);
+      return -1;
+    }
+    printf("Successfully connected through the proxy.\n");
+    dup2(hSocket,s2);
+    free(req);
+    
+    return 0;
 }

@@ -1,22 +1,4 @@
-/*Toralizer.c*/
-/*__________________________________________________________________________________________________________________________________________*/
-//Notes:-
-//1. Predicate - A function that returns true or false
-
-
-
 #include <stdio.h>
-
-
-/*
-1. Turn the client into a library(Shared library)
-2. Turn main() into our own connect()
-3. Replace regular connect()
-4. Grab the IP and port from original connect()
-5. Do what we do now
-*/
-
-
 #include "Toralizer.h"
 
 Req *request(struct sockaddr_in *sock2){
